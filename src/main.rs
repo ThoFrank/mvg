@@ -6,6 +6,8 @@ use clap::Clap;
 use colored::*;
 use css_color_parser::Color as CssColor;
 
+const STATION_NAME_MAX_CHARS: usize = 40;
+
 /// Command line interface to Munich's public transportation service.
 #[derive(Clap)]
 #[clap(version = env!("CARGO_PKG_VERSION"), author = env!("CARGO_PKG_AUTHORS"))]
@@ -112,10 +114,17 @@ async fn print_departures(search_string: &str, mvg: &MVG){
         let color = dep.line_background_color.parse::<CssColor>().unwrap_or(CssColor{r: 255, g: 255, b:255, a: 1.0});
         
         print!("{}\t", dep.label().on_truecolor(color.r, color.g, color.b));
-        print!("{}", dep.destination);
-        for _ in 0..( 5 - (dep.destination.chars().count() / 8)){
-            print!("\t");
+        
+        let destination = dep.destination();
+        let dest_len = destination.chars().count();
+
+        if dest_len > STATION_NAME_MAX_CHARS{
+            print!("{}...", destination.chars().take(STATION_NAME_MAX_CHARS-3).collect::<String>());
+        } else {
+            print!("{}", destination);
+            print!("{}", (dest_len..STATION_NAME_MAX_CHARS).map(|_| ' ').collect::<String>());
         }
+
         print!("{}", dep.departure_time().format("%_H:%M"));
         println!();
     }
