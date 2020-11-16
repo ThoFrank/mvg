@@ -3,7 +3,7 @@ use mvg_lib::data::location::Location;
 use mvg_lib::data::MVGError;
 
 use clap::Clap;
-use colored::*;
+use termion::{color, style};
 use css_color_parser::Color as CssColor;
 
 const STATION_NAME_MAX_CHARS: usize = 40;
@@ -113,7 +113,18 @@ async fn print_departures(search_string: &str, mvg: &MVG){
     for dep in departures{
         let color = dep.line_background_color.parse::<CssColor>().unwrap_or(CssColor{r: 255, g: 255, b:255, a: 1.0});
         
-        print!("{}\t", dep.label().on_truecolor(color.r, color.g, color.b));
+        let adjust = |col| std::cmp::min((col as u16+32)/64, 4) as u8;
+
+        //let color = color::Rgb(color.r, color.g, color.b);
+        let color = color::AnsiValue::rgb(adjust(color.r), adjust(color.g), adjust(color.b));
+
+        print!(
+            "{}{}{}\t",
+            color::Bg(color),
+            dep.label(),
+            style::Reset
+        );
+        //print!("{}\t", dep.label().on_truecolor(color.r, color.g, color.b));
         
         let destination = dep.destination();
         let dest_len = destination.chars().count();
@@ -133,8 +144,9 @@ async fn print_departures(search_string: &str, mvg: &MVG){
 
 fn print_mvg_err(err: &MVGError){
     println!(
-        "{}: {}",
-        "Err".red(),
+        "{}Err{}: {}",
+        color::Fg(color::Red),
+        style::Reset,
         match err {
             MVGError::HyperError(_) => "Couldn't connect to the MVG API.",
             MVGError::JsonError(_) => "Couldn't parse API response.",
