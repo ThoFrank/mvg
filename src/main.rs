@@ -1,10 +1,12 @@
 use mvg_lib::MVG;
 use mvg_lib::data::location::Location;
+use mvg_lib::data::MVGError;
 
 use clap::Clap;
 use colored::*;
 use css_color_parser::Color as CssColor;
 
+/// Command line interface to Munich's public transportation service.
 #[derive(Clap)]
 #[clap(version = env!("CARGO_PKG_VERSION"), author = env!("CARGO_PKG_AUTHORS"))]
 struct Opts {
@@ -18,16 +20,18 @@ enum SubCommand {
     Departures(Departures),
 }
 
-/// a subcommand for fetching stations
+/// Fetch stations
 #[derive(Clap)]
 struct Stations {
-    search_string: Option<String>,
+    /// Optional search term.
+    search_term: Option<String>,
 }
 
-/// a subcommand for fetching departures
+/// Fetch departures
 #[derive(Clap)]
 struct Departures {
-    search_string: String,
+    /// Either a station id or a station name.
+    station: String,
 }
 
 #[tokio::main]
@@ -38,10 +42,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match opts.subcmd {
         SubCommand::Stations(s) => {
-           print_stations(&match s.search_string{Some(s) => s, None => String::new()}, &mvg).await;
+           print_stations(&match s.search_term{Some(s) => s, None => String::new()}, &mvg).await;
         }
         SubCommand::Departures(d) => {
-            print_departures(&d.search_string, &mvg).await;
+            print_departures(&d.station, &mvg).await;
         }
     };
 
@@ -51,7 +55,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 async fn print_stations(search_string: &str, mvg: &MVG){
     let stations = match mvg.stations_by_name(search_string).await{
         Ok(stations) => stations,
-        Err(e) => panic!("Error: {:#?}", e)
+        Err(e) => {
+            print_mvg_err(&e);
+            return;
+        }
     };
     for sta in stations.iter().filter_map(|s| {
         match s {
@@ -69,26 +76,36 @@ async fn print_departures(search_string: &str, mvg: &MVG){
         Err(_) => {
             match mvg.stations_by_name(search_string).await{
                 Ok(stations) => stations,
-                Err(_) => panic!("No Station found!")
+                Err(e) => {
+                    print_mvg_err(&e);
+                    return;
+                }
             }
         }
     };
 
-    let station = stations.iter().filter_map(|s| {
+    // filter for stations
+    let mut stations = stations.iter().filter_map(|s| {
         match s {
             Location::Station(s) => Some(s),
-            Location::Address(_) => None
+            _ => None
         }
-    }).next();
+    });
 
-    let station = match station{
+    let station = match stations.next(){
         Some(station) => station,
-        None => panic!("No station found")
+        None => {
+            println!("No station found");
+            return;
+        }
     };
 
     let departures = match mvg.departures_by_id(&station.id()).await{
         Ok(departures) => departures,
-        Err(_) => panic!("Could not get Departures!")
+        Err(e) => {
+            print_mvg_err(&e);
+            return;
+        }
     };
     println!("Departures at station {}, {}:", station.name(), station.place());
     for dep in departures{
@@ -102,4 +119,18 @@ async fn print_departures(search_string: &str, mvg: &MVG){
         print!("{}", dep.departure_time().format("%_H:%M"));
         println!();
     }
+}
+
+
+fn print_mvg_err(err: &MVGError){
+    println!(
+        "{}: {}",
+        "Err".red(),
+        match err {
+            MVGError::HyperError(_) => "Couldn't connect to the MVG API.",
+            MVGError::JsonError(_) => "Couldn't parse API response.",
+            MVGError::InvalidUri(_) => "Couldn't create valid URI.",
+            _ => "Unknown Error"
+        }
+    )
 }
