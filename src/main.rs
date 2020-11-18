@@ -4,9 +4,17 @@ use mvg_lib::MVG;
 
 use clap::Clap;
 use css_color_parser::Color as CssColor;
+use lazy_static::lazy_static;
 use termion::{color, style};
 
+mod conf;
+use conf::Config;
+
 const STATION_NAME_MAX_CHARS: usize = 40;
+
+lazy_static! {
+    static ref CONFIG: Config = conf::load_config(&conf::DEFAULT_LOCATION);
+}
 
 /// Command line interface to Munich's public transportation service.
 #[derive(Clap)]
@@ -33,7 +41,7 @@ struct Stations {
 #[derive(Clap)]
 struct Departures {
     /// Either a station id or a station name.
-    station: String,
+    station: Option<String>,
 }
 
 #[tokio::main]
@@ -54,7 +62,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .await;
         }
         SubCommand::Departures(d) => {
-            print_departures(&d.station, &mvg).await;
+            let station = d.station.as_ref().or(CONFIG.default_station.as_ref());
+            if let Some(station) = station {
+                print_departures(&station, &mvg).await;
+            } else {
+                println!("Please provide a station!");
+            }
         }
     };
 
