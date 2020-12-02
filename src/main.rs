@@ -1,6 +1,7 @@
-use mvg_lib::data::location::Location;
+use mvg_lib::data::location;
 use mvg_lib::data::MVGError;
 use mvg_lib::MVG;
+use mvg_lib::data::connection;
 
 use clap::Clap;
 use css_color_parser::Color as CssColor;
@@ -14,6 +15,7 @@ const STATION_NAME_MAX_CHARS: usize = 40;
 
 lazy_static! {
     static ref CONFIG: Config = conf::load_config(&conf::DEFAULT_LOCATION);
+    static ref OPTS: Opts = Opts::parse();
 }
 
 /// Command line interface to Munich's public transportation service.
@@ -28,13 +30,14 @@ struct Opts {
 enum SubCommand {
     Stations(Stations),
     Departures(Departures),
+    Connections(Connections)
 }
 
 /// Fetch stations
 #[derive(Clap)]
 struct Stations {
     /// Optional search term.
-    search_term: Option<String>,
+    search_term: Option<String>
 }
 
 /// Fetch departures
@@ -44,17 +47,25 @@ struct Departures {
     station: Option<String>,
 }
 
+/// search connections
+#[derive(Clap)]
+struct Connections{
+    /// departure station
+    from_station: String,
+    /// destination station
+    to_station: String
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let opts: Opts = Opts::parse();
 
     let mvg = MVG::new();
 
-    match opts.subcmd {
+    match &OPTS.subcmd {
         SubCommand::Stations(s) => {
             print_stations(
-                &match s.search_term {
-                    Some(s) => s,
+                &match &s.search_term {
+                    Some(s) => String::from(s),
                     None => String::new(),
                 },
                 &mvg,
@@ -68,6 +79,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             } else {
                 println!("Please provide a station!");
             }
+        }
+        SubCommand::Connections(c) => {
+            print_connections(&c.from_station, &c.to_station, &mvg).await;
         }
     };
 
@@ -83,10 +97,11 @@ async fn print_stations(search_string: &str, mvg: &MVG) {
         }
     };
     for sta in stations.iter().filter_map(|s| match s {
-        Location::Station(s) => Some(s),
-        Location::Address(_) => None,
+        location::Location::Station(s) => Some(s),
+        location::Location::Address(_) => None,
+        location::Location::Location(_) => None
     }) {
-        println!("{}, {}", sta.name(), sta.place())
+        println!("{}, {}, {}", sta.name(), sta.place(), sta.id())
     }
 }
 
@@ -104,7 +119,7 @@ async fn print_departures(search_string: &str, mvg: &MVG) {
 
     // filter for stations
     let mut stations = stations.iter().filter_map(|s| match s {
-        Location::Station(s) => Some(s),
+        location::Location::Station(s) => Some(s),
         _ => None,
     });
 
@@ -130,7 +145,7 @@ async fn print_departures(search_string: &str, mvg: &MVG) {
     );
     for dep in departures {
         let color = dep
-            .line_background_color
+            .line_background_color()
             .parse::<CssColor>()
             .unwrap_or(CssColor {
                 r: 255,
@@ -170,6 +185,59 @@ async fn print_departures(search_string: &str, mvg: &MVG) {
 
         print!("{}", dep.departure_time().format("%_H:%M"));
         println!();
+    }
+}
+
+async fn print_connections(from: &str, to: &str, mvg: &MVG){
+    let from: Vec<mvg_lib::data::location::Station> = match mvg.stations_by_name(from).await{
+        Ok(stations) => stations,
+        Err(e) => {
+            print_mvg_err(&e);
+            return;
+        }
+    }.into_iter().filter_map(|s| match s {
+        location::Location::Station(s) => Some(s),
+        _ => None,
+    }).collect();
+
+    let from = from.first().unwrap();
+
+    let to: Vec<mvg_lib::data::location::Station> = match mvg.stations_by_name(to).await{
+        Ok(stations) => stations,
+        Err(e) => {
+            print_mvg_err(&e);
+            return;
+        }
+    }.into_iter().filter_map(|s| match s {
+        location::Location::Station(s) => Some(s),
+        _ => None,
+    }).collect();
+
+    let to = to.first().unwrap();
+
+    let connections = mvg.connections(&from.id(), &to.id()).await;
+    if let Err(e) = &connections {
+        print_mvg_err(e);
+        println!("{:#?}", e);
+        return;
+    }
+    let connections = connections.unwrap();
+    for (i, con) in connections.into_iter().enumerate(){
+        println!{"Connection {}", i};
+        for con_part in con.connection_parts(){
+            match con_part{
+                connection::ConnectionPart::Footway(_fw) => {
+                    println!("Run!");
+                }
+                connection::ConnectionPart::Transportation(tp) => {
+                    if let location::Location::Station(from) = tp.from(){
+                        if let location::Location::Station(to) = tp.to(){
+                            println!("Take {} from {} to {}", tp.label(), from.name(), to.name());
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

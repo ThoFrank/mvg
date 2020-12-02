@@ -14,7 +14,7 @@ pub struct Station {
     #[serde(rename = "hasZoomData")]
     has_zoom_data: bool,
     products: Vec<String>,
-    aliases: String,
+    aliases: Option<String>,
     link: Option<String>,
     #[serde(rename = "tariffZones")]
     tariff_zones: String,
@@ -31,12 +31,20 @@ pub struct Address{
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct Position{
+    latitude: f32,
+    longitude: f32
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 pub enum Location{
     #[serde(rename = "station")]
     Station(Station),
     #[serde(rename = "address")]
-    Address(Address)
+    Address(Address),
+    #[serde(rename = "location")]
+    Location(Position)
 }
 
 #[derive(Serialize, Deserialize, Debug)]

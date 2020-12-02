@@ -14,4 +14,4 @@ termion = "1.5"
 css-color-parser = "0.1.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.8"
-lazy_static = "^1.0"
+lazy_static = "^1.4"

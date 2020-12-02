@@ -13,6 +13,14 @@ async fn test_retrieve_stations() {
     let _stations = mvg.stations_by_name(&"Marienplatz").await.unwrap();
 }
 
+#[tokio::test]
+async fn test_retrieve_connections() {
+    let mvg = MVG::new();
+    let from_id = "de:09162:2";
+    let to_id = "de:09162:1622";
+    let _connections = mvg.connections(from_id, to_id);
+}
+
 #[test]
 fn test_into_location() {
     let json = "{

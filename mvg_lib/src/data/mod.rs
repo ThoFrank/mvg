@@ -1,5 +1,6 @@
 pub mod location;
 pub mod departure;
+pub mod connection;
 
 #[derive(Debug)]
 pub enum MVGError {

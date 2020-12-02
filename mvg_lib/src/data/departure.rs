@@ -10,34 +10,34 @@ pub struct DepartureInfo {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ServingLine {
-    pub destination: String,
-    pub sev: bool,
+    destination: String,
+    sev: bool,
     #[serde(rename = "partialNet")]
-    pub partial_net: String,
-    pub product: String,
+    partial_net: String,
+    product: String,
     #[serde(rename = "lineNumber")]
-    pub line_number: String,
+    line_number: String,
     #[serde(rename = "divaId")]
-    pub diva_id: String,
+    diva_id: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Departure {
     #[serde(rename = "departureTime")]
-    pub departure_time: u128,
-    pub product: String,
-    pub label: String,
-    pub destination: String,
-    pub live: bool,
-    pub cancelled: bool,
+    departure_time: u128,
+    product: String,
+    label: String,
+    destination: String,
+    live: bool,
+    cancelled: bool,
     #[serde(rename = "lineBackgroundColor")]
-    pub line_background_color: String,
+    line_background_color: String,
     #[serde(rename = "departureId")]
-    pub departure_id: String,
-    pub sev: bool,
-    pub platform: String,
+    departure_id: String,
+    sev: bool,
+    platform: String,
     #[serde(rename = "stopPositionNumber")]
-    pub stop_position_number: u8,
+    stop_position_number: u8,
 }
 
 impl Departure {
@@ -54,5 +54,9 @@ impl Departure {
 
     pub fn destination(&self) -> String{
         self.destination.clone()
+    }
+
+    pub fn line_background_color(&self) -> String{
+        self.line_background_color.clone()
     }
 }
