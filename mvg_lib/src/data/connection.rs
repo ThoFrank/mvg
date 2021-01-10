@@ -3,12 +3,14 @@ use super::location::Location;
 
 use chrono::{DateTime, Local};
 
+/// returned by the mvg api
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionList{
     pub connection_list: Vec<Connection>
 }
 
+/// Desciption of one time-dependant connection
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Connection{
@@ -27,7 +29,7 @@ pub struct Connection{
     banner_hash: String
 }
 
-
+/// Transportation from one to another location by one product of public traffic
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Transportation{
@@ -42,7 +44,7 @@ pub struct Transportation{
     delay: i32,
     arr_delay: i32,
     cancelled: bool,
-    product: String,
+    product: Product,
     label: String,
     server_id: String,
     destination: String,
@@ -59,6 +61,7 @@ pub struct Transportation{
     info_messages: Option<Vec<String>>
 }
 
+/// A stop during a transportation
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Stop{
@@ -68,6 +71,7 @@ pub struct Stop{
     arr_delay: i32,
 }
 
+/// Part of a connection which has to be walked
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Footway{
@@ -86,6 +90,7 @@ pub struct Footway{
     no_changing_required: bool,
 }
 
+/// Representing one part of a connection.
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "connectionPartType")]
 #[serde(rename_all = "UPPERCASE")]
@@ -101,21 +106,36 @@ struct PathDescriptor{
     level: i8
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum Product{
+    SBahn,
+    UBahn,
+    Bus,
+    Bahn,
+    Tram
+}
+
 impl Connection{
+    /// the starting location
     pub fn from(&self) -> &Location{
         &self.from
     }
 
+    /// the destination
     pub fn to(&self) -> &Location{
         &self.to
     }
 
+    /// start time
     pub fn departure_time(&self) -> DateTime<Local> {
         let time =
             std::time::UNIX_EPOCH + std::time::Duration::from_millis(self.departure as u64);
         let time = DateTime::<Local>::from(time);
         time
     }
+
+    /// end time
     pub fn arrival_time(&self) -> DateTime<Local> {
         let time =
             std::time::UNIX_EPOCH + std::time::Duration::from_millis(self.arrival as u64);
@@ -123,24 +143,29 @@ impl Connection{
         time
     }
 
+    /// list of different connection parts
     pub fn connection_parts(&self) -> &Vec<ConnectionPart>{
         &self.connection_part_list
     }
 }
 
 impl Transportation{
+    /// starting location
     pub fn from(&self) -> &Location{
         &self.from
     }
 
+    /// destination
     pub fn to(&self) -> &Location{
         &self.to
     }
 
-    pub fn product(&self) -> &String{
+    /// transporting product (e.g. UBAHN, SBAHN)
+    pub fn product(&self) -> &Product{
         &self.product
     }
 
+    /// label of transporting product (e.g. U6, S7)
     pub fn label(&self) -> &String{
         &self.label
     }

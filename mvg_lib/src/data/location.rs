@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use super::connection::Product;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Station {
@@ -13,7 +14,7 @@ pub struct Station {
     has_live_data: bool,
     #[serde(rename = "hasZoomData")]
     has_zoom_data: bool,
-    products: Vec<String>,
+    products: Vec<Product>,
     aliases: Option<String>,
     link: Option<String>,
     #[serde(rename = "tariffZones")]

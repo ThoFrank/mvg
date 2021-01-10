@@ -1,6 +1,8 @@
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
 
+use super::connection::Product;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DepartureInfo {
     #[serde(rename = "servingLines")]
@@ -14,7 +16,7 @@ pub struct ServingLine {
     sev: bool,
     #[serde(rename = "partialNet")]
     partial_net: String,
-    product: String,
+    product: Product,
     #[serde(rename = "lineNumber")]
     line_number: String,
     #[serde(rename = "divaId")]
@@ -25,7 +27,7 @@ pub struct ServingLine {
 pub struct Departure {
     #[serde(rename = "departureTime")]
     departure_time: u128,
-    product: String,
+    product: Product,
     label: String,
     destination: String,
     live: bool,
